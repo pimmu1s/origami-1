@@ -4,7 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "elm-test"
+    "test": "elm-test",
+    "docs": "elm-doc-preview"
   },
   "author": "Thomas Waters",
   "license": "MIT",
