@@ -8,7 +8,5 @@
   },
   "author": "Thomas Waters",
   "license": "MIT",
-  "dependencies": {
-    "rabbit-ear": "^0.1.91"
-  }
+  "dependencies": {}
 }
