@@ -3,7 +3,7 @@ module Fold.File exposing
     , empty, with
     , spec, creator, author, title, description, classes, frames
     , setSpec, setCreator, setAuthor, setTitle, setDescription, setClasses, setFrames
-    , encode, decode
+    , encode, decoder
     )
 
 {-|
@@ -31,28 +31,29 @@ module Fold.File exposing
 
 # Json
 
-@docs encode, decode
+@docs encode, decoder
 
 -}
 
+import Fold.Frame as Frame exposing (Frame)
 import Json.Decode as Decode
 import Json.Encode as Encode
 
 
 {-| -}
 type File
-    = File FileProperties
+    = File Properties
 
 
 {-| -}
-type alias FileProperties =
+type alias Properties =
     { spec : String
     , creator : String
     , author : String
     , title : String
     , description : String
     , classes : List Class
-    , frames : List String
+    , frames : List Frame
     }
 
 
@@ -90,7 +91,7 @@ with :
     , title : String
     , description : String
     , classes : List Class
-    , frames : List String
+    , frames : List Frame
     }
     -> File
 with =
@@ -138,7 +139,7 @@ classes (File properties) =
 
 
 {-| -}
-frames : File -> List String
+frames : File -> List Frame
 frames (File properties) =
     properties.frames
 
@@ -184,7 +185,7 @@ setClasses newClasses (File properties) =
 
 
 {-| -}
-setFrames : List String -> File -> File
+setFrames : List Frame -> File -> File
 setFrames newFrames (File properties) =
     File { properties | frames = newFrames }
 
@@ -220,13 +221,13 @@ encode (File properties) =
         , ( "file_title", Encode.string properties.title )
         , ( "file_description", Encode.string properties.description )
         , ( "file_classes", Encode.list encodeClass properties.classes )
-        , ( "file_frames", Encode.list Encode.string properties.frames )
+        , ( "file_frames", Encode.list Frame.encode properties.frames )
         ]
 
 
 {-| -}
-decode : Decode.Decoder File
-decode =
+decoder : Decode.Decoder File
+decoder =
     let
         decodeClasses =
             Decode.string
@@ -245,17 +246,17 @@ decode =
                             "diagrams" ->
                                 Decode.succeed Diagrams
 
-                            other ->
-                                Decode.fail <| "\"" ++ other ++ "\" is not a valid file class value."
+                            _ ->
+                                Decode.fail <| "\"" ++ string ++ "\" is not a valid file class."
                     )
                 |> Decode.list
     in
-    Decode.map7 FileProperties
+    Decode.map7 Properties
         (Decode.field "file_spec" Decode.string)
         (Decode.field "file_creator" Decode.string)
         (Decode.field "file_author" Decode.string)
         (Decode.field "file_title" Decode.string)
         (Decode.field "file_description" Decode.string)
         (Decode.field "file_classes" decodeClasses)
-        (Decode.field "file_frames" <| Decode.list Decode.string)
+        (Decode.field "file_frames" <| Decode.list Frame.decoder)
         |> Decode.map File

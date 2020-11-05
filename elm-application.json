@@ -1,9 +1,0 @@
-{
-    "name": "Evelios/elm-fold",
-    "summary": "FOLD origami library",
-    "version": "1.0.0",
-    "exposed-modules": [
-        "Fold",
-        "Fold.File"
-    ]
-}

@@ -23,5 +23,5 @@ encodeAndDecode =
     test "Encoding and decoding fold file properties" <|
         \_ ->
             File.encode file
-                |> Decode.decodeValue File.decode
+                |> Decode.decodeValue File.decoder
                 |> Expect.equal (Ok file)
