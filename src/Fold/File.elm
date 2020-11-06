@@ -41,19 +41,19 @@ import Json.Encode as Encode
 
 
 {-| -}
-type File
-    = File Properties
+type File units coordinates
+    = File (Properties units coordinates)
 
 
 {-| -}
-type alias Properties =
+type alias Properties units coordinates =
     { spec : String
     , creator : String
     , author : String
     , title : String
     , description : String
     , classes : List Class
-    , frames : List Frame
+    , frames : List (Frame units coordinates)
     }
 
 
@@ -70,7 +70,7 @@ type Class
 
 
 {-| -}
-empty : File
+empty : File units coordinates
 empty =
     with
         { spec = "1.1"
@@ -91,9 +91,9 @@ with :
     , title : String
     , description : String
     , classes : List Class
-    , frames : List Frame
+    , frames : List (Frame units coordinates)
     }
-    -> File
+    -> File units coordinates
 with =
     File
 
@@ -103,43 +103,43 @@ with =
 
 
 {-| -}
-spec : File -> String
+spec : File units coordinates -> String
 spec (File properties) =
     properties.spec
 
 
 {-| -}
-creator : File -> String
+creator : File units coordinates -> String
 creator (File properties) =
     properties.creator
 
 
 {-| -}
-author : File -> String
+author : File units coordinates -> String
 author (File properties) =
     properties.author
 
 
 {-| -}
-title : File -> String
+title : File units coordinates -> String
 title (File properties) =
     properties.title
 
 
 {-| -}
-description : File -> String
+description : File units coordinates -> String
 description (File properties) =
     properties.description
 
 
 {-| -}
-classes : File -> List Class
+classes : File units coordinates -> List Class
 classes (File properties) =
     properties.classes
 
 
 {-| -}
-frames : File -> List Frame
+frames : File units coordinates -> List (Frame units coordinates)
 frames (File properties) =
     properties.frames
 
@@ -149,43 +149,43 @@ frames (File properties) =
 
 
 {-| -}
-setSpec : String -> File -> File
+setSpec : String -> File units coordinates -> File units coordinates
 setSpec newSpec (File properties) =
     File { properties | spec = newSpec }
 
 
 {-| -}
-setCreator : String -> File -> File
+setCreator : String -> File units coordinates -> File units coordinates
 setCreator newCreator (File properties) =
     File { properties | creator = newCreator }
 
 
 {-| -}
-setAuthor : String -> File -> File
+setAuthor : String -> File units coordinates -> File units coordinates
 setAuthor newAuthor (File properties) =
     File { properties | author = newAuthor }
 
 
 {-| -}
-setTitle : String -> File -> File
+setTitle : String -> File units coordinates -> File units coordinates
 setTitle newTitle (File properties) =
     File { properties | title = newTitle }
 
 
 {-| -}
-setDescription : String -> File -> File
+setDescription : String -> File units coordinates -> File units coordinates
 setDescription newDescription (File properties) =
     File { properties | description = newDescription }
 
 
 {-| -}
-setClasses : List Class -> File -> File
+setClasses : List Class -> File units coordinates -> File units coordinates
 setClasses newClasses (File properties) =
     File { properties | classes = newClasses }
 
 
 {-| -}
-setFrames : List Frame -> File -> File
+setFrames : List (Frame units coordinates) -> File units coordinates -> File units coordinates
 setFrames newFrames (File properties) =
     File { properties | frames = newFrames }
 
@@ -195,7 +195,7 @@ setFrames newFrames (File properties) =
 
 
 {-| -}
-encode : File -> Encode.Value
+encode : File units coordinates -> Encode.Value
 encode (File properties) =
     let
         encodeClass =
@@ -226,7 +226,7 @@ encode (File properties) =
 
 
 {-| -}
-decoder : Decode.Decoder File
+decoder : Decode.Decoder (File units coordinates)
 decoder =
     let
         decodeClasses =

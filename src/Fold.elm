@@ -14,5 +14,5 @@ import Fold.File exposing (File)
 
 
 {-| -}
-type Fold
-    = Fold File
+type Fold units coordinates
+    = Fold (File units coordinates)

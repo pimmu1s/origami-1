@@ -34,7 +34,6 @@ module Fold.Vertex exposing
 
 -}
 
-import Fold.Types exposing (Unit(..))
 import Json.Decode as Decode
 import Json.Encode as Encode exposing (Value)
 import Point2d exposing (Point2d)

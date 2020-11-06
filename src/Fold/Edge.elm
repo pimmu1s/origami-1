@@ -38,9 +38,9 @@ type Edge
 
 {-| -}
 type EdgeType
-    = Boundry
+    = Boundary
     | Mountain
-    | Valey
+    | Valley
     | Flat
     | Unassigned
 
