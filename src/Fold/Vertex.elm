@@ -1,6 +1,7 @@
 module Fold.Vertex exposing
     ( Vertex
-    , coordinate, setCoordinate
+    , coordinate
+    , setCoordinate
     )
 
 {-|
@@ -13,17 +14,12 @@ module Fold.Vertex exposing
 
 # Accessors
 
-@docs coordinates
+@docs coordinate
 
 
 # Modifiers
 
-@docs setCoordinates
-
-
-# Json
-
-@docs encode, decoder
+@docs setCoordinate
 
 -}
 
@@ -35,6 +31,7 @@ import Point2d exposing (Point2d)
 -- Types
 
 
+{-| -}
 type alias Vertex units coordinates =
     Internal.Vertex units coordinates
 

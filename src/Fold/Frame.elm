@@ -1,6 +1,9 @@
 module Fold.Frame exposing
     ( Frame, Class(..), Attribute(..)
     , empty
+    , vertices
+    , edges
+    , faces
     , author, title, description, classes, attributes, unit
     , setAuthor, setTitle, setDescription, setClasses, setAttributes, setUnit
     , encode, decoder
@@ -17,6 +20,21 @@ module Fold.Frame exposing
 # Builder
 
 @docs empty
+
+
+# Vertices
+
+@docs vertices
+
+
+# Edges
+
+@docs edges
+
+
+# Faces
+
+@docs faces
 
 
 # Metadata
@@ -39,21 +57,23 @@ module Fold.Frame exposing
 -}
 
 import Angle exposing (Angle)
-import Fold.Internal exposing (EdgeType(..))
-import Fold.Types as Type exposing (Unit(..))
+import Dict exposing (Dict)
+import Fold.Internal exposing (Edge(..), Face(..), Vertex(..))
+import Fold.Types as Type exposing (EdgeType(..), Unit(..))
 import Json.Decode as Decode exposing (Decoder)
 import Json.Encode as Encode exposing (Value)
+import List.Extra
 import Point2d exposing (Point2d)
 import Quantity
 
 
 {-| -}
 type Frame units coordinates
-    = Frame Properties (Vertices units coordinates) Edges Faces
+    = Frame Metadata (Body units coordinates)
 
 
 {-| -}
-type alias Properties =
+type alias Metadata =
     { author : String
     , title : String
     , description : String
@@ -63,24 +83,10 @@ type alias Properties =
     }
 
 
-type alias Vertices units coordinates =
-    { vertices : List (Point2d units coordinates)
-    , adjacency : List (List Int)
-    , faces : List (List Int)
-    }
-
-
-type alias Edges =
-    { vertices : List (List Int)
-    , faces : List (List Int)
-    , assignment : List EdgeType
-    , foldAngle : List Angle
-    }
-
-
-type alias Faces =
-    { vertices : List (List Int)
-    , edges : List (List Int)
+type alias Body units coordinates =
+    { vertices : Dict Int (Vertex units coordinates)
+    , edges : Dict Int Edge
+    , faces : Dict Int Face
     }
 
 
@@ -121,17 +127,9 @@ empty =
         , attributes = []
         , unit = Unit
         }
-        { vertices = []
-        , adjacency = []
-        , faces = []
-        }
-        { vertices = []
-        , faces = []
-        , assignment = []
-        , foldAngle = []
-        }
-        { vertices = []
-        , edges = []
+        { vertices = Dict.empty
+        , edges = Dict.empty
+        , faces = Dict.empty
         }
 
 
@@ -142,112 +140,145 @@ empty =
 
 {-| -}
 author : Frame units coordinates -> String
-author (Frame properties _ _ _) =
-    properties.author
+author (Frame metadata _) =
+    metadata.author
 
 
 {-| -}
 title : Frame units coordinates -> String
-title (Frame properties _ _ _) =
-    properties.title
+title (Frame metadata _) =
+    metadata.title
 
 
 {-| -}
 description : Frame units coordinates -> String
-description (Frame properties _ _ _) =
-    properties.description
+description (Frame metadata _) =
+    metadata.description
 
 
 {-| -}
 classes : Frame units coordinates -> List Class
-classes (Frame properties _ _ _) =
-    properties.classes
+classes (Frame metadata _) =
+    metadata.classes
 
 
 {-| -}
 attributes : Frame units coordinates -> List Attribute
-attributes (Frame properties _ _ _) =
-    properties.attributes
+attributes (Frame metadata _) =
+    metadata.attributes
 
 
 {-| -}
 unit : Frame units coordinates -> Unit
-unit (Frame properties _ _ _) =
-    properties.unit
+unit (Frame metadata _) =
+    metadata.unit
 
 
 
 -- Modifiers
 
 
-theProperties : Frame units coordinates -> Properties
-theProperties (Frame properties _ _ _) =
-    properties
+theMetadata : Frame units coordinates -> Metadata
+theMetadata (Frame metadata _) =
+    metadata
 
 
-setProperties : Properties -> Frame units coordinates -> Frame units coordinates
-setProperties properties (Frame _ vertices edges faces) =
-    Frame properties vertices edges faces
+setMetadata : Metadata -> Frame units coordinates -> Frame units coordinates
+setMetadata metadata (Frame _ theBody) =
+    Frame metadata theBody
 
 
 {-| -}
 setAuthor : String -> Frame units coordinates -> Frame units coordinates
 setAuthor newAuthor frame =
     let
-        properties =
-            theProperties frame
+        metadata =
+            theMetadata frame
     in
-    setProperties { properties | author = newAuthor } frame
+    setMetadata { metadata | author = newAuthor } frame
 
 
 {-| -}
 setTitle : String -> Frame units coordinates -> Frame units coordinates
 setTitle newTitle frame =
     let
-        properties =
-            theProperties frame
+        metadata =
+            theMetadata frame
     in
-    setProperties { properties | title = newTitle } frame
+    setMetadata { metadata | title = newTitle } frame
 
 
 {-| -}
 setDescription : String -> Frame units coordinates -> Frame units coordinates
 setDescription newDescription frame =
     let
-        properties =
-            theProperties frame
+        metadata =
+            theMetadata frame
     in
-    setProperties { properties | description = newDescription } frame
+    setMetadata { metadata | description = newDescription } frame
 
 
 {-| -}
 setClasses : List Class -> Frame units coordinates -> Frame units coordinates
 setClasses newClasses frame =
     let
-        properties =
-            theProperties frame
+        metadata =
+            theMetadata frame
     in
-    setProperties { properties | classes = newClasses } frame
+    setMetadata { metadata | classes = newClasses } frame
 
 
 {-| -}
 setAttributes : List Attribute -> Frame units coordinates -> Frame units coordinates
 setAttributes newAttributes frame =
     let
-        properties =
-            theProperties frame
+        metadata =
+            theMetadata frame
     in
-    setProperties { properties | attributes = newAttributes } frame
+    setMetadata { metadata | attributes = newAttributes } frame
 
 
 {-| -}
 setUnit : Unit -> Frame units coordinates -> Frame units coordinates
 setUnit newUnit frame =
     let
-        properties =
-            theProperties frame
+        metadata =
+            theMetadata frame
     in
-    setProperties { properties | unit = newUnit } frame
+    setMetadata { metadata | unit = newUnit } frame
+
+
+
+-- Vertices
+
+
+{-| -}
+vertices : Frame units coordinates -> List (Vertex units coordinates)
+vertices (Frame _ theBody) =
+    theBody.vertices
+        |> Dict.values
+
+
+
+-- Edges
+
+
+{-| -}
+edges : Frame units coordinates -> List Edge
+edges (Frame _ theBody) =
+    theBody.edges
+        |> Dict.values
+
+
+
+-- Faces
+
+
+{-| -}
+faces : Frame units coordinates -> List Face
+faces (Frame _ theBody) =
+    theBody.faces
+        |> Dict.values
 
 
 
@@ -257,16 +288,16 @@ setUnit newUnit frame =
 
 {-| -}
 encode : Frame units coordinates -> Value
-encode (Frame properties vertices edges faces) =
+encode (Frame metadata body) =
     Encode.object <|
-        encodeProperties properties
-            ++ encodeVertices vertices
-            ++ encodeEdges edges
-            ++ encodeFaces faces
+        encodeProperties metadata
+            ++ encodeVertices (Dict.values body.vertices)
+            ++ encodeEdges (Dict.values body.edges)
+            ++ encodeFaces (Dict.values body.faces)
 
 
-encodeProperties : Properties -> List ( String, Value )
-encodeProperties properties =
+encodeProperties : Metadata -> List ( String, Value )
+encodeProperties metadata =
     let
         encodeClass =
             \class ->
@@ -318,12 +349,12 @@ encodeProperties properties =
                         NonSelfInteresting ->
                             "nonSelfIntersecting"
     in
-    [ ( "frame_author", Encode.string properties.author )
-    , ( "frame_title", Encode.string properties.title )
-    , ( "frame_description", Encode.string properties.description )
-    , ( "frame_classes", Encode.list encodeClass properties.classes )
-    , ( "frame_attributes", Encode.list encodeAttribute properties.attributes )
-    , ( "frame_unit", Encode.string (Type.unitToString properties.unit) )
+    [ ( "frame_author", Encode.string metadata.author )
+    , ( "frame_title", Encode.string metadata.title )
+    , ( "frame_description", Encode.string metadata.description )
+    , ( "frame_classes", Encode.list encodeClass metadata.classes )
+    , ( "frame_attributes", Encode.list encodeAttribute metadata.attributes )
+    , ( "frame_unit", Encode.string (Type.unitToString metadata.unit) )
     ]
 
 
@@ -332,9 +363,12 @@ encodeIds =
     Encode.list <| Encode.list Encode.int
 
 
-encodeVertices : Vertices units coordinates -> List ( String, Value )
-encodeVertices vertices =
+encodeVertices : List (Vertex units coordinates) -> List ( String, Value )
+encodeVertices theVertices =
     let
+        map property =
+            List.map (\(Vertex properties) -> property properties)
+
         encodePoints =
             Encode.list
                 (\vertex ->
@@ -344,15 +378,18 @@ encodeVertices vertices =
                         ]
                 )
     in
-    [ ( "vertices_coords", encodePoints vertices.vertices )
-    , ( "vertices_vertices", encodeIds vertices.adjacency )
-    , ( "vertices_faces", encodeIds vertices.faces )
+    [ ( "vertices_coords", encodePoints (map .coordinate theVertices) )
+    , ( "vertices_vertices", encodeIds (map .adjacency theVertices) )
+    , ( "vertices_faces", encodeIds (map .faces theVertices) )
     ]
 
 
-encodeEdges : Edges -> List ( String, Value )
-encodeEdges edges =
+encodeEdges : List Edge -> List ( String, Value )
+encodeEdges theEdges =
     let
+        map property =
+            List.map (\(Edge properties) -> property properties)
+
         encodeEdgeType =
             \string ->
                 Encode.string <|
@@ -374,18 +411,25 @@ encodeEdges edges =
 
         encodeAngle =
             Encode.float << Angle.inDegrees
+
+        encodeEdgeVertices (Edge edge) =
+            Encode.list Encode.int [ edge.startVertex, edge.endVertex ]
     in
-    [ ( "edges_vertices", encodeIds edges.vertices )
-    , ( "edges_faces", encodeIds edges.faces )
-    , ( "edges_assignment", Encode.list encodeEdgeType edges.assignment )
-    , ( "edges_foldAngle", Encode.list encodeAngle edges.foldAngle )
+    [ ( "edges_vertices", Encode.list encodeEdgeVertices theEdges )
+    , ( "edges_faces", encodeIds (map .faces theEdges) )
+    , ( "edges_assignment", Encode.list encodeEdgeType (map .edgeType theEdges) )
+    , ( "edges_foldAngle", Encode.list encodeAngle (map .foldAngle theEdges) )
     ]
 
 
-encodeFaces : Faces -> List ( String, Value )
-encodeFaces faces =
-    [ ( "faces_vertices", encodeIds faces.vertices )
-    , ( "faces_edges", encodeIds faces.edges )
+encodeFaces : List Face -> List ( String, Value )
+encodeFaces theFaces =
+    let
+        map property =
+            List.map (\(Face properties) -> property properties)
+    in
+    [ ( "faces_vertices", encodeIds (map .vertices theFaces) )
+    , ( "faces_edges", encodeIds (map .edges theFaces) )
     ]
 
 
@@ -396,15 +440,82 @@ encodeFaces faces =
 {-| -}
 decoder : Decoder (Frame units coordinates)
 decoder =
-    Decode.map4 Frame
-        decoderProperties
+    Decode.map4
+        (\metadata verticesRecord edgesRecord facesRecord ->
+            let
+                decodedVertices =
+                    List.indexedMap
+                        (\index ( point, adjacencies, theFaces ) ->
+                            Vertex
+                                { coordinate = point
+                                , adjacency = adjacencies
+                                , faces = theFaces
+                                , id = index
+                                }
+                        )
+                        (List.Extra.zip3
+                            verticesRecord.vertices
+                            verticesRecord.adjacency
+                            verticesRecord.faces
+                        )
+
+                decodedEdges =
+                    List.indexedMap
+                        (\index { endpoints, theFaces, edgeType, foldAngle } ->
+                            Edge
+                                { startVertex = Tuple.first endpoints
+                                , endVertex = Tuple.second endpoints
+                                , faces = theFaces
+                                , edgeType = edgeType
+                                , foldAngle = foldAngle
+                                , id = index
+                                }
+                        )
+                        (List.map4
+                            (\endpoints theFaces assignment foldAngle ->
+                                { endpoints = endpoints
+                                , theFaces = theFaces
+                                , edgeType = assignment
+                                , foldAngle = foldAngle
+                                }
+                            )
+                            edgesRecord.vertices
+                            edgesRecord.faces
+                            edgesRecord.assignment
+                            edgesRecord.foldAngle
+                        )
+
+                decodedFaces =
+                    List.indexedMap
+                        (\index ( theVertices, theEdges ) ->
+                            Face
+                                { vertices = theVertices
+                                , edges = theEdges
+                                , id = index
+                                }
+                        )
+                        (List.Extra.zip
+                            facesRecord.vertices
+                            facesRecord.edges
+                        )
+
+                toDictionary =
+                    List.indexedMap Tuple.pair >> Dict.fromList
+            in
+            Frame metadata
+                { vertices = toDictionary decodedVertices
+                , edges = toDictionary decodedEdges
+                , faces = toDictionary decodedFaces
+                }
+        )
+        decoderMetadata
         decoderVertices
         decoderEdges
         decoderFaces
 
 
-decoderProperties : Decoder Properties
-decoderProperties =
+decoderMetadata : Decoder Metadata
+decoderMetadata =
     let
         decodeClass =
             Decode.string
@@ -478,7 +589,7 @@ decoderProperties =
                                 Decode.fail <| "\"" ++ string ++ "\" is not a valid frame unit value."
                     )
     in
-    Decode.map6 Properties
+    Decode.map6 Metadata
         (Decode.field "frame_author" Decode.string)
         (Decode.field "frame_title" Decode.string)
         (Decode.field "frame_description" Decode.string)
@@ -490,6 +601,13 @@ decoderProperties =
 decodeIds : Decoder (List (List Int))
 decodeIds =
     Decode.list <| Decode.list Decode.int
+
+
+type alias Vertices units coordinates =
+    { vertices : List (Point2d units coordinates)
+    , adjacency : List (List Int)
+    , faces : List (List Int)
+    }
 
 
 decoderVertices : Decoder (Vertices units coordinates)
@@ -514,6 +632,14 @@ decoderVertices =
         (Decode.field "vertices_coords" <| Decode.list decoderPoint2d)
         (Decode.field "vertices_vertices" decodeIds)
         (Decode.field "vertices_faces" decodeIds)
+
+
+type alias Edges =
+    { vertices : List ( Int, Int )
+    , faces : List (List Int)
+    , assignment : List EdgeType
+    , foldAngle : List Angle
+    }
 
 
 decoderEdges : Decoder Edges
@@ -545,12 +671,31 @@ decoderEdges =
 
         decoderAngle =
             Decode.map Angle.degrees Decode.float
+
+        decoderEdgeVertices =
+            Decode.list Decode.int
+                |> Decode.andThen
+                    (\list ->
+                        case list of
+                            a :: b :: [] ->
+                                Decode.succeed ( a, b )
+
+                            _ ->
+                                Decode.fail <| "Edge vertices must be of length 2"
+                    )
+                |> Decode.list
     in
     Decode.map4 Edges
-        (Decode.field "edges_vertices" decodeIds)
+        (Decode.field "edges_vertices" decoderEdgeVertices)
         (Decode.field "edges_faces" decodeIds)
         (Decode.field "edges_assignment" <| Decode.list decoderEdgeType)
         (Decode.field "edges_foldAngle" <| Decode.list decoderAngle)
+
+
+type alias Faces =
+    { vertices : List (List Int)
+    , edges : List (List Int)
+    }
 
 
 decoderFaces : Decoder Faces

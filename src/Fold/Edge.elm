@@ -1,5 +1,5 @@
 module Fold.Edge exposing
-    ( Edge, EdgeType
+    ( Edge
     , edgeType, foldAngle
     , setEdgeType, setFoldAngle
     )
@@ -9,7 +9,7 @@ module Fold.Edge exposing
 
 # Types
 
-@docs Edge, EdgeType
+@docs Edge
 
 
 # Accessors
@@ -24,23 +24,21 @@ module Fold.Edge exposing
 -}
 
 import Angle exposing (Angle)
-import Fold.Internal as Internal
+import Fold.Internal as Internal exposing (Edge(..), Face, Vertex(..))
+import Fold.Types exposing (EdgeType)
 
 
 
 -- Type
 
 
+{-| -}
 type alias Edge =
     Internal.Edge
 
 
-type alias EdgeType =
-    Internal.EdgeType
 
-
-
--- Builders
+-- Accessors
 
 
 {-| -}

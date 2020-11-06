@@ -16,5 +16,6 @@ import Fold.Internal as Internal exposing (Face)
 -- Types
 
 
+{-| -}
 type alias Face =
     Internal.Face

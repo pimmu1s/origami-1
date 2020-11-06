@@ -1,7 +1,4 @@
-module Fold.Internal exposing
-    ( Vertex(..), Edge(..), Face(..), Id(..)
-    , EdgeType(..)
-    )
+module Fold.Internal exposing (Vertex(..), Edge(..), Face(..))
 
 {-|
 
@@ -13,6 +10,7 @@ module Fold.Internal exposing
 -}
 
 import Angle exposing (Angle)
+import Fold.Types exposing (EdgeType)
 import Point2d exposing (Point2d)
 
 
@@ -20,37 +18,28 @@ import Point2d exposing (Point2d)
 type Vertex units coordinates
     = Vertex
         { coordinate : Point2d units coordinates
-        , id : Id
-        }
-
-
-{-| -}
-type Face
-    = Face
-        { vertices : ( Int, Int, Int )
-        , edges : ( Int, Int, Int )
-        , id : Id
+        , adjacency : List Int
+        , faces : List Int
+        , id : Int
         }
 
 
 {-| -}
 type Edge
     = Edge
-        { edgeType : EdgeType
+        { startVertex : Int
+        , endVertex : Int
+        , faces : List Int
+        , edgeType : EdgeType
         , foldAngle : Angle
-        , id : Id
+        , id : Int
         }
 
 
 {-| -}
-type EdgeType
-    = Boundary
-    | Mountain
-    | Valley
-    | Flat
-    | Unassigned
-
-
-{-| -}
-type Id
-    = Id Int
+type Face
+    = Face
+        { vertices : List Int
+        , edges : List Int
+        , id : Int
+        }

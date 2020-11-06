@@ -1,6 +1,14 @@
-module Fold.Types exposing (Unit(..), unitToString, unitFromString)
+module Fold.Types exposing
+    ( EdgeType(..)
+    , Unit(..), unitToString, unitFromString
+    )
 
 {-|
+
+
+# Edge
+
+@docs EdgeType
 
 
 # Unit
@@ -10,6 +18,16 @@ module Fold.Types exposing (Unit(..), unitToString, unitFromString)
 -}
 
 
+{-| -}
+type EdgeType
+    = Boundary
+    | Mountain
+    | Valley
+    | Flat
+    | Unassigned
+
+
+{-| -}
 type Unit
     = Unit
     | Inches
@@ -21,6 +39,7 @@ type Unit
     | Nanometers
 
 
+{-| -}
 unitToString : Unit -> String
 unitToString unit =
     case unit of
