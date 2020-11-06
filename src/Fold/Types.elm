@@ -18,7 +18,7 @@ type Unit
     | Centimeters
     | Millimeters
     | Microns
-    | NanoMeters
+    | Nanometers
 
 
 unitToString : Unit -> String
@@ -45,7 +45,7 @@ unitToString unit =
         Microns ->
             "um"
 
-        NanoMeters ->
+        Nanometers ->
             "nm"
 
 
@@ -75,7 +75,7 @@ unitFromString string =
             Just Microns
 
         "nm" ->
-            Just NanoMeters
+            Just Nanometers
 
         _ ->
             Nothing
