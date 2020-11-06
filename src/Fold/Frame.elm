@@ -39,7 +39,7 @@ module Fold.Frame exposing
 -}
 
 import Angle exposing (Angle)
-import Fold.Edge exposing (EdgeType(..))
+import Fold.Internal exposing (EdgeType(..))
 import Fold.Types as Type exposing (Unit(..))
 import Json.Decode as Decode exposing (Decoder)
 import Json.Encode as Encode exposing (Value)

@@ -9,7 +9,7 @@ module Fold.Face exposing (Face)
 
 -}
 
-import Fold.Internal as Internal exposing (Face(..))
+import Fold.Internal as Internal exposing (Face)
 
 
 

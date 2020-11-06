@@ -1,5 +1,5 @@
 module Fold.Edge exposing
-    ( Edge, EdgeType(..)
+    ( Edge, EdgeType
     , edgeType, foldAngle
     , setEdgeType, setFoldAngle
     )
@@ -23,26 +23,20 @@ module Fold.Edge exposing
 
 -}
 
+import Angle exposing (Angle)
+import Fold.Internal as Internal
+
+
+
 -- Type
 
-import Angle exposing (Angle)
+
+type alias Edge =
+    Internal.Edge
 
 
-{-| -}
-type Edge
-    = Edge
-        { edgeType : EdgeType
-        , foldAngle : Angle
-        }
-
-
-{-| -}
-type EdgeType
-    = Boundary
-    | Mountain
-    | Valley
-    | Flat
-    | Unassigned
+type alias EdgeType =
+    Internal.EdgeType
 
 
 
@@ -51,13 +45,13 @@ type EdgeType
 
 {-| -}
 edgeType : Edge -> EdgeType
-edgeType (Edge properties) =
+edgeType (Internal.Edge properties) =
     properties.edgeType
 
 
 {-| -}
 foldAngle : Edge -> Angle
-foldAngle (Edge properties) =
+foldAngle (Internal.Edge properties) =
     properties.foldAngle
 
 
@@ -67,11 +61,11 @@ foldAngle (Edge properties) =
 
 {-| -}
 setEdgeType : EdgeType -> Edge -> Edge
-setEdgeType newEdgeType (Edge properties) =
-    Edge { properties | edgeType = newEdgeType }
+setEdgeType newEdgeType (Internal.Edge properties) =
+    Internal.Edge { properties | edgeType = newEdgeType }
 
 
 {-| -}
 setFoldAngle : Angle -> Edge -> Edge
-setFoldAngle newFoldAngle (Edge properties) =
-    Edge { properties | foldAngle = newFoldAngle }
+setFoldAngle newFoldAngle (Internal.Edge properties) =
+    Internal.Edge { properties | foldAngle = newFoldAngle }
