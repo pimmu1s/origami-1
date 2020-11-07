@@ -38,6 +38,7 @@ module Fold.File exposing
 import Fold.Frame as Frame exposing (Frame)
 import Json.Decode as Decode
 import Json.Encode as Encode
+import Util.Decode as Decode
 
 
 {-| -}
@@ -47,7 +48,7 @@ type File units coordinates
 
 {-| -}
 type alias Properties units coordinates =
-    { spec : String
+    { spec : Int
     , creator : String
     , author : String
     , title : String
@@ -73,7 +74,7 @@ type Class
 empty : File units coordinates
 empty =
     with
-        { spec = "1.1"
+        { spec = 1
         , creator = "Elm Library"
         , author = ""
         , title = ""
@@ -85,7 +86,7 @@ empty =
 
 {-| -}
 with :
-    { spec : String
+    { spec : Int
     , creator : String
     , author : String
     , title : String
@@ -103,7 +104,7 @@ with =
 
 
 {-| -}
-spec : File units coordinates -> String
+spec : File units coordinates -> Int
 spec (File properties) =
     properties.spec
 
@@ -149,7 +150,7 @@ frames (File properties) =
 
 
 {-| -}
-setSpec : String -> File units coordinates -> File units coordinates
+setSpec : Int -> File units coordinates -> File units coordinates
 setSpec newSpec (File properties) =
     File { properties | spec = newSpec }
 
@@ -215,7 +216,7 @@ encode (File properties) =
                             "diagrams"
     in
     Encode.object
-        [ ( "file_spec", Encode.string properties.spec )
+        [ ( "file_spec", Encode.int properties.spec )
         , ( "file_creator", Encode.string properties.creator )
         , ( "file_author", Encode.string properties.author )
         , ( "file_title", Encode.string properties.title )
@@ -249,14 +250,13 @@ decoder =
                             _ ->
                                 Decode.fail <| "\"" ++ string ++ "\" is not a valid file class."
                     )
-                |> Decode.list
     in
     Decode.map7 Properties
-        (Decode.field "file_spec" Decode.string)
-        (Decode.field "file_creator" Decode.string)
-        (Decode.field "file_author" Decode.string)
-        (Decode.field "file_title" Decode.string)
-        (Decode.field "file_description" Decode.string)
-        (Decode.field "file_classes" decodeClasses)
-        (Decode.field "file_frames" <| Decode.list Frame.decoder)
+        (Decode.maybeInt "file_spec" 1)
+        (Decode.maybeString "file_creator")
+        (Decode.maybeString "file_author")
+        (Decode.maybeString "file_title")
+        (Decode.maybeString "file_description")
+        (Decode.maybeList "file_classes" decodeClasses)
+        (Decode.maybeList "file_frames" Frame.decoder)
         |> Decode.map File

@@ -11,7 +11,7 @@ encodeAndDecode =
     let
         file =
             File.with
-                { spec = "1.0"
+                { spec = 1
                 , creator = "Elm Application"
                 , author = "Author"
                 , title = "Test"
