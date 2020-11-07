@@ -5,7 +5,9 @@ import Element exposing (..)
 import Element.Input as Input
 import File exposing (File)
 import File.Select as Select
-import Fold.File
+import Fold.File exposing (Class(..))
+import Fold.Frame as Frame exposing (Attribute(..), Class(..))
+import Fold.Types as Types
 import Html exposing (Html)
 import Json.Decode as Decode
 import Pixels exposing (Pixels)
@@ -104,14 +106,122 @@ view model =
                 NoFoldFile ->
                     none
 
-                FoldFile _ ->
-                    text "File Loaded"
+                FoldFile foldFile ->
+                    viewFoldFile foldFile
 
                 FoldFileError error ->
                     text <| Decode.errorToString error
     in
-    Element.layout [] <|
+    Element.layout [ padding 50 ] <|
         column []
             [ upload
             , foldText
             ]
+
+
+viewFoldFile : Fold.File.File units coordinates -> Element msg
+viewFoldFile foldFile =
+    let
+        fileAttributes =
+            mapAttributes <|
+                [ ( "Spec", String.fromInt <| Fold.File.spec foldFile )
+                , ( "Creator", Fold.File.creator foldFile )
+                , ( "Author", Fold.File.author foldFile )
+                , ( "Title", Fold.File.title foldFile )
+                , ( "Description", Fold.File.description foldFile )
+                , ( "Attributes", mapList Fold.File.classes fileClassToString foldFile )
+                ]
+
+        frameAttributes frame =
+            mapAttributes <|
+                [ ( "Author", Frame.author frame )
+                , ( "Title", Frame.title frame )
+                , ( "Description", Frame.description frame )
+                , ( "Classes", mapList Frame.classes frameClassToString frame )
+                , ( "Attributes", mapList Frame.attributes frameAttributeToString frame )
+                , ( "Unit", Types.unitToString <| Frame.unit frame )
+                ]
+
+        fileClassToString class =
+            case class of
+                SingleModel ->
+                    "Single Model"
+
+                MultiModel ->
+                    "Multi Model"
+
+                Animation ->
+                    "Animation"
+
+                Diagrams ->
+                    "Diagrams"
+
+        frameClassToString class =
+            case class of
+                CreasePattern ->
+                    "Crease Pattern"
+
+                FoldedForm ->
+                    "Folded Form"
+
+                Graph ->
+                    "Graph"
+
+                Linkage ->
+                    "Linkage"
+
+        frameAttributeToString attribute =
+            case attribute of
+                Dimension2d ->
+                    "2D"
+
+                Dimension3d ->
+                    "3D"
+
+                Abstract ->
+                    "Abstract"
+
+                Manifold ->
+                    "Manifold"
+
+                NonManifold ->
+                    "Non-Manifold"
+
+                Orientable ->
+                    "Orientable"
+
+                SelfTouching ->
+                    "Non-Orientable"
+
+                NonSelfTouching ->
+                    "Self Touching"
+
+                SelfIntersecting ->
+                    "Non Self Touching"
+
+                NonSelfInteresting ->
+                    "Non Self Intersecting"
+
+        mapList accessor toString file =
+            accessor file
+                |> List.map toString
+                |> String.join ", "
+
+        mapAttributes =
+            List.map
+                (\( name, value ) ->
+                    row [ spacing 6 ]
+                        [ text (name ++ ": ")
+                        , text value
+                        ]
+                )
+
+        fileColumn =
+            column [ padding 10, spacing 6 ]
+    in
+    fileColumn
+        (List.map fileColumn
+            ([ fileAttributes ]
+                ++ List.map frameAttributes (Fold.File.allFrames foldFile)
+            )
+        )

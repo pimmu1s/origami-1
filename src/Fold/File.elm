@@ -1,6 +1,7 @@
 module Fold.File exposing
     ( File, Class(..)
     , empty, with
+    , keyFrame, allFrames, nonKeyFrames
     , spec, creator, author, title, description, classes
     , setSpec, setCreator, setAuthor, setTitle, setDescription, setClasses
     , encode, decoder
@@ -17,6 +18,11 @@ module Fold.File exposing
 # Builders
 
 @docs empty, with
+
+
+# Frames
+
+@docs keyFrame, allFrames, nonKeyFrames
 
 
 # Metadata
@@ -98,8 +104,34 @@ with :
     }
     -> Frame units coordinates
     -> File units coordinates
-with theMetadata keyFrame =
-    File theMetadata keyFrame []
+with theMetadata theKeyFrame =
+    File theMetadata theKeyFrame []
+
+
+
+-- Frames
+
+
+{-| Get the key frame of the file. The key frame is the first or main
+frame of the fold file.
+-}
+keyFrame : File units coordinates -> Frame units coordinates
+keyFrame (File _ theKeyFrame _) =
+    theKeyFrame
+
+
+{-| Get all the frames of a file including the key frame.
+-}
+allFrames : File units coordinates -> List (Frame units coordinates)
+allFrames (File _ theKeyFrames theOtherFrames) =
+    theKeyFrames :: theOtherFrames
+
+
+{-| Get all frames of the file except the key frame.
+-}
+nonKeyFrames : File units coordinates -> List (Frame units coordinates)
+nonKeyFrames (File _ _ theOtherFrames) =
+    theOtherFrames
 
 
 
@@ -152,8 +184,8 @@ classes (File theMetadata _ _) =
 
 
 setMetadata : Metadata -> File units coordinates -> File units coordinates
-setMetadata newMetadata (File _ keyFrame otherFrames) =
-    File newMetadata keyFrame otherFrames
+setMetadata newMetadata (File _ theKeyFrame otherFrames) =
+    File newMetadata theKeyFrame otherFrames
 
 
 {-| -}
@@ -258,7 +290,7 @@ decoder =
     Decode.map3
         (\theMetadata keyFrameBody frames ->
             let
-                keyFrame =
+                theKeyFrame =
                     Frame.with
                         (Frame.header
                             { author = theMetadata.author
@@ -271,7 +303,7 @@ decoder =
                         )
                         keyFrameBody
             in
-            File theMetadata keyFrame frames
+            File theMetadata theKeyFrame frames
         )
         decoderMetadata
         Frame.decoderBody
