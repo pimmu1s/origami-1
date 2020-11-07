@@ -1,8 +1,8 @@
 module Fold.File exposing
     ( File, Class(..)
     , empty, with
-    , spec, creator, author, title, description, classes, frames
-    , setSpec, setCreator, setAuthor, setTitle, setDescription, setClasses, setFrames
+    , spec, creator, author, title, description, classes
+    , setSpec, setCreator, setAuthor, setTitle, setDescription, setClasses
     , encode, decoder
     )
 
@@ -19,14 +19,17 @@ module Fold.File exposing
 @docs empty, with
 
 
-# Accessors
-
-@docs spec, creator, author, title, description, classes, frames
+# Metadata
 
 
-# Modifiers
+## Accessors
 
-@docs setSpec, setCreator, setAuthor, setTitle, setDescription, setClasses, setFrames
+@docs spec, creator, author, title, description, classes
+
+
+## Modifiers
+
+@docs setSpec, setCreator, setAuthor, setTitle, setDescription, setClasses
 
 
 # Json
@@ -36,25 +39,25 @@ module Fold.File exposing
 -}
 
 import Fold.Frame as Frame exposing (Frame)
-import Json.Decode as Decode
-import Json.Encode as Encode
+import Fold.Types exposing (Unit(..))
+import Json.Decode as Decode exposing (Decoder)
+import Json.Encode as Encode exposing (Value)
 import Util.Decode as Decode
 
 
 {-| -}
 type File units coordinates
-    = File (Properties units coordinates)
+    = File Metadata (Frame units coordinates) (List (Frame units coordinates))
 
 
 {-| -}
-type alias Properties units coordinates =
+type alias Metadata =
     { spec : Int
     , creator : String
     , author : String
     , title : String
     , description : String
     , classes : List Class
-    , frames : List (Frame units coordinates)
     }
 
 
@@ -80,8 +83,8 @@ empty =
         , title = ""
         , description = ""
         , classes = []
-        , frames = []
         }
+        Frame.empty
 
 
 {-| -}
@@ -92,103 +95,125 @@ with :
     , title : String
     , description : String
     , classes : List Class
-    , frames : List (Frame units coordinates)
     }
+    -> Frame units coordinates
     -> File units coordinates
-with =
-    File
+with theMetadata keyFrame =
+    File theMetadata keyFrame []
 
 
 
--- Accessors
+-- Metadata
+
+
+metadata : File units coordinates -> Metadata
+metadata (File theMetadata _ _) =
+    theMetadata
 
 
 {-| -}
 spec : File units coordinates -> Int
-spec (File properties) =
-    properties.spec
+spec (File theMetadata _ _) =
+    theMetadata.spec
 
 
 {-| -}
 creator : File units coordinates -> String
-creator (File properties) =
-    properties.creator
+creator (File theMetadata _ _) =
+    theMetadata.creator
 
 
 {-| -}
 author : File units coordinates -> String
-author (File properties) =
-    properties.author
+author (File theMetadata _ _) =
+    theMetadata.author
 
 
 {-| -}
 title : File units coordinates -> String
-title (File properties) =
-    properties.title
+title (File theMetadata _ _) =
+    theMetadata.title
 
 
 {-| -}
 description : File units coordinates -> String
-description (File properties) =
-    properties.description
+description (File theMetadata _ _) =
+    theMetadata.description
 
 
 {-| -}
 classes : File units coordinates -> List Class
-classes (File properties) =
-    properties.classes
-
-
-{-| -}
-frames : File units coordinates -> List (Frame units coordinates)
-frames (File properties) =
-    properties.frames
+classes (File theMetadata _ _) =
+    theMetadata.classes
 
 
 
 -- Modifiers
 
 
+setMetadata : Metadata -> File units coordinates -> File units coordinates
+setMetadata newMetadata (File _ keyFrame otherFrames) =
+    File newMetadata keyFrame otherFrames
+
+
 {-| -}
 setSpec : Int -> File units coordinates -> File units coordinates
-setSpec newSpec (File properties) =
-    File { properties | spec = newSpec }
+setSpec newSpec file =
+    let
+        theMetadata =
+            metadata file
+    in
+    setMetadata { theMetadata | spec = newSpec } file
 
 
 {-| -}
 setCreator : String -> File units coordinates -> File units coordinates
-setCreator newCreator (File properties) =
-    File { properties | creator = newCreator }
+setCreator newCreator file =
+    let
+        theMetadata =
+            metadata file
+    in
+    setMetadata { theMetadata | creator = newCreator } file
 
 
 {-| -}
 setAuthor : String -> File units coordinates -> File units coordinates
-setAuthor newAuthor (File properties) =
-    File { properties | author = newAuthor }
+setAuthor newAuthor file =
+    let
+        theMetadata =
+            metadata file
+    in
+    setMetadata { theMetadata | author = newAuthor } file
 
 
 {-| -}
 setTitle : String -> File units coordinates -> File units coordinates
-setTitle newTitle (File properties) =
-    File { properties | title = newTitle }
+setTitle newTitle file =
+    let
+        theMetadata =
+            metadata file
+    in
+    setMetadata { theMetadata | title = newTitle } file
 
 
 {-| -}
 setDescription : String -> File units coordinates -> File units coordinates
-setDescription newDescription (File properties) =
-    File { properties | description = newDescription }
+setDescription newDescription file =
+    let
+        theMetadata =
+            metadata file
+    in
+    setMetadata { theMetadata | description = newDescription } file
 
 
 {-| -}
 setClasses : List Class -> File units coordinates -> File units coordinates
-setClasses newClasses (File properties) =
-    File { properties | classes = newClasses }
-
-
-{-| -}
-setFrames : List (Frame units coordinates) -> File units coordinates -> File units coordinates
-setFrames newFrames (File properties) =
-    File { properties | frames = newFrames }
+setClasses newClasses file =
+    let
+        theMetadata =
+            metadata file
+    in
+    setMetadata { theMetadata | classes = newClasses } file
 
 
 
@@ -196,8 +221,8 @@ setFrames newFrames (File properties) =
 
 
 {-| -}
-encode : File units coordinates -> Encode.Value
-encode (File properties) =
+encode : File units coordinates -> Value
+encode (File properties theKeyFrame theOtherFrames) =
     let
         encodeClass =
             \class ->
@@ -215,20 +240,47 @@ encode (File properties) =
                         Diagrams ->
                             "diagrams"
     in
-    Encode.object
+    Encode.object <|
         [ ( "file_spec", Encode.int properties.spec )
         , ( "file_creator", Encode.string properties.creator )
         , ( "file_author", Encode.string properties.author )
         , ( "file_title", Encode.string properties.title )
         , ( "file_description", Encode.string properties.description )
         , ( "file_classes", Encode.list encodeClass properties.classes )
-        , ( "file_frames", Encode.list Frame.encode properties.frames )
+        , ( "file_frames", Encode.list Frame.encode theOtherFrames )
         ]
+            ++ Frame.encodeBody theKeyFrame
 
 
 {-| -}
-decoder : Decode.Decoder (File units coordinates)
+decoder : Decoder (File units coordinates)
 decoder =
+    Decode.map3
+        (\theMetadata keyFrameBody frames ->
+            let
+                keyFrame =
+                    Frame.with
+                        (Frame.header
+                            { author = theMetadata.author
+                            , title = theMetadata.title
+                            , description = theMetadata.description
+                            , classes = []
+                            , attributes = []
+                            , unit = Unit
+                            }
+                        )
+                        keyFrameBody
+            in
+            File theMetadata keyFrame frames
+        )
+        decoderMetadata
+        Frame.decoderBody
+        (Decode.maybeList "file_frames" Frame.decoder)
+
+
+{-| -}
+decoderMetadata : Decoder Metadata
+decoderMetadata =
     let
         decodeClasses =
             Decode.string
@@ -251,12 +303,10 @@ decoder =
                                 Decode.fail <| "\"" ++ string ++ "\" is not a valid file class."
                     )
     in
-    Decode.map7 Properties
+    Decode.map6 Metadata
         (Decode.maybeInt "file_spec" 1)
         (Decode.maybeString "file_creator")
         (Decode.maybeString "file_author")
         (Decode.maybeString "file_title")
         (Decode.maybeString "file_description")
         (Decode.maybeList "file_classes" decodeClasses)
-        (Decode.maybeList "file_frames" Frame.decoder)
-        |> Decode.map File

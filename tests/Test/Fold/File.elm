@@ -2,6 +2,7 @@ module Test.Fold.File exposing (..)
 
 import Expect exposing (Expectation)
 import Fold.File as File
+import Fold.Frame as Frame
 import Json.Decode as Decode
 import Test exposing (..)
 
@@ -15,10 +16,14 @@ encodeAndDecode =
                 , creator = "Elm Application"
                 , author = "Author"
                 , title = "Test"
-                , description = "Test file"
+                , description = "Test File"
                 , classes = [ File.SingleModel ]
-                , frames = []
                 }
+                (Frame.empty
+                    |> Frame.setAuthor "Author"
+                    |> Frame.setTitle "Test"
+                    |> Frame.setDescription "Test File"
+                )
     in
     test "Encoding and decoding fold file properties" <|
         \_ ->

@@ -1,12 +1,12 @@
 module Fold.Frame exposing
     ( Frame, Class(..), Attribute(..)
-    , empty
+    , empty, with, header
     , vertices
     , edges
     , faces
     , author, title, description, classes, attributes, unit
     , setAuthor, setTitle, setDescription, setClasses, setAttributes, setUnit
-    , encode, decoder
+    , encode, encodeBody, decoder, decoderBody
     )
 
 {-|
@@ -19,7 +19,7 @@ module Fold.Frame exposing
 
 # Builder
 
-@docs empty
+@docs empty, with, header
 
 
 # Vertices
@@ -52,7 +52,7 @@ module Fold.Frame exposing
 
 # Json
 
-@docs encode, decoder
+@docs encode, encodeBody, decoder, decoderBody
 
 -}
 
@@ -65,6 +65,7 @@ import Json.Encode as Encode exposing (Value)
 import List.Extra
 import Point2d exposing (Point2d)
 import Quantity
+import Util.Decode as Decode
 
 
 {-| -}
@@ -119,7 +120,7 @@ type Attribute
 {-| -}
 empty : Frame units coordinates
 empty =
-    Frame
+    with
         { author = ""
         , title = ""
         , description = ""
@@ -131,6 +132,26 @@ empty =
         , edges = Dict.empty
         , faces = Dict.empty
         }
+
+
+{-| -}
+with : Metadata -> Body units coordinates -> Frame units coordinates
+with =
+    Frame
+
+
+{-| -}
+header :
+    { author : String
+    , title : String
+    , description : String
+    , classes : List Class
+    , attributes : List Attribute
+    , unit : Unit
+    }
+    -> Metadata
+header =
+    identity
 
 
 
@@ -288,16 +309,12 @@ faces (Frame _ theBody) =
 
 {-| -}
 encode : Frame units coordinates -> Value
-encode (Frame metadata body) =
-    Encode.object <|
-        encodeProperties metadata
-            ++ encodeVertices (Dict.values body.vertices)
-            ++ encodeEdges (Dict.values body.edges)
-            ++ encodeFaces (Dict.values body.faces)
+encode frame =
+    Encode.object <| encodeMetadata frame ++ encodeBody frame
 
 
-encodeProperties : Metadata -> List ( String, Value )
-encodeProperties metadata =
+encodeMetadata : Frame units coordinates -> List ( String, Value )
+encodeMetadata (Frame metadata _) =
     let
         encodeClass =
             \class ->
@@ -356,6 +373,14 @@ encodeProperties metadata =
     , ( "frame_attributes", Encode.list encodeAttribute metadata.attributes )
     , ( "frame_unit", Encode.string (Type.unitToString metadata.unit) )
     ]
+
+
+{-| -}
+encodeBody : Frame units coordinates -> List ( String, Value )
+encodeBody (Frame _ body) =
+    encodeVertices (Dict.values body.vertices)
+        ++ encodeEdges (Dict.values body.edges)
+        ++ encodeFaces (Dict.values body.faces)
 
 
 encodeIds : List (List Int) -> Value
@@ -437,81 +462,15 @@ encodeFaces theFaces =
 -- Decoder
 
 
-{-| -}
+{-| This is a decoder for a frame object. This decoder is used for decoding a
+full frame object. This should be used for decoding every frame except the
+key frame. The key frame is the frame that is stored in the top level object.
+-}
 decoder : Decoder (Frame units coordinates)
 decoder =
-    Decode.map4
-        (\metadata verticesRecord edgesRecord facesRecord ->
-            let
-                decodedVertices =
-                    List.indexedMap
-                        (\index ( point, adjacencies, theFaces ) ->
-                            Vertex
-                                { coordinate = point
-                                , adjacency = adjacencies
-                                , faces = theFaces
-                                , id = index
-                                }
-                        )
-                        (List.Extra.zip3
-                            verticesRecord.vertices
-                            verticesRecord.adjacency
-                            verticesRecord.faces
-                        )
-
-                decodedEdges =
-                    List.indexedMap
-                        (\index { endpoints, theFaces, edgeType, foldAngle } ->
-                            Edge
-                                { startVertex = Tuple.first endpoints
-                                , endVertex = Tuple.second endpoints
-                                , faces = theFaces
-                                , edgeType = edgeType
-                                , foldAngle = foldAngle
-                                , id = index
-                                }
-                        )
-                        (List.map4
-                            (\endpoints theFaces assignment foldAngle ->
-                                { endpoints = endpoints
-                                , theFaces = theFaces
-                                , edgeType = assignment
-                                , foldAngle = foldAngle
-                                }
-                            )
-                            edgesRecord.vertices
-                            edgesRecord.faces
-                            edgesRecord.assignment
-                            edgesRecord.foldAngle
-                        )
-
-                decodedFaces =
-                    List.indexedMap
-                        (\index ( theVertices, theEdges ) ->
-                            Face
-                                { vertices = theVertices
-                                , edges = theEdges
-                                , id = index
-                                }
-                        )
-                        (List.Extra.zip
-                            facesRecord.vertices
-                            facesRecord.edges
-                        )
-
-                toDictionary =
-                    List.indexedMap Tuple.pair >> Dict.fromList
-            in
-            Frame metadata
-                { vertices = toDictionary decodedVertices
-                , edges = toDictionary decodedEdges
-                , faces = toDictionary decodedFaces
-                }
-        )
+    Decode.map2 Frame
         decoderMetadata
-        decoderVertices
-        decoderEdges
-        decoderFaces
+        decoderBody
 
 
 decoderMetadata : Decoder Metadata
@@ -598,9 +557,89 @@ decoderMetadata =
         (Decode.field "frame_unit" decodeUnit)
 
 
-decodeIds : Decoder (List (List Int))
-decodeIds =
-    Decode.list <| Decode.list Decode.int
+{-| Decode the body of the frame. This decoder can be used for decoding every
+frame of the fold object. The reason this partial decoder is exposed is because
+the key frame is stored in the top level object. The body of the key frame needs
+to be decoded separately from the rest of the frames. The metadata associated
+with the key frame is stored in the file object metadata.
+-}
+decoderBody : Decoder (Body units coordinates)
+decoderBody =
+    let
+        decodedVertices verticesRecord =
+            List.indexedMap
+                (\index ( point, adjacencies, theFaces ) ->
+                    Vertex
+                        { coordinate = point
+                        , adjacency = adjacencies
+                        , faces = theFaces
+                        , id = index
+                        }
+                )
+                (List.Extra.zip3
+                    verticesRecord.vertices
+                    verticesRecord.adjacency
+                    verticesRecord.faces
+                )
+
+        decodedEdges edgesRecord =
+            List.indexedMap
+                (\index { endpoints, theFaces, edgeType, foldAngle } ->
+                    Edge
+                        { startVertex = Tuple.first endpoints
+                        , endVertex = Tuple.second endpoints
+                        , faces = theFaces
+                        , edgeType = edgeType
+                        , foldAngle = foldAngle
+                        , id = index
+                        }
+                )
+                (List.map4
+                    (\endpoints theFaces assignment foldAngle ->
+                        { endpoints = endpoints
+                        , theFaces = theFaces
+                        , edgeType = assignment
+                        , foldAngle = foldAngle
+                        }
+                    )
+                    edgesRecord.vertices
+                    edgesRecord.faces
+                    edgesRecord.assignment
+                    edgesRecord.foldAngle
+                )
+
+        decodedFaces facesRecord =
+            List.indexedMap
+                (\index ( theVertices, theEdges ) ->
+                    Face
+                        { vertices = theVertices
+                        , edges = theEdges
+                        , id = index
+                        }
+                )
+                (List.Extra.zip
+                    facesRecord.vertices
+                    facesRecord.edges
+                )
+
+        toDictionary =
+            List.indexedMap Tuple.pair >> Dict.fromList
+    in
+    Decode.map3
+        (\verticesRecord edgesRecord facesRecord ->
+            Body
+                (toDictionary <| decodedVertices verticesRecord)
+                (toDictionary <| decodedEdges edgesRecord)
+                (toDictionary <| decodedFaces facesRecord)
+        )
+        decoderVertices
+        decoderEdges
+        decoderFaces
+
+
+decodeIds : String -> Decoder (List (List Int))
+decodeIds name =
+    Decode.maybeList name <| Decode.list Decode.int
 
 
 type alias Vertices units coordinates =
@@ -630,8 +669,8 @@ decoderVertices =
     in
     Decode.map3 Vertices
         (Decode.field "vertices_coords" <| Decode.list decoderPoint2d)
-        (Decode.field "vertices_vertices" decodeIds)
-        (Decode.field "vertices_faces" decodeIds)
+        (decodeIds "vertices_vertices")
+        (decodeIds "vertices_faces")
 
 
 type alias Edges =
@@ -687,9 +726,9 @@ decoderEdges =
     in
     Decode.map4 Edges
         (Decode.field "edges_vertices" decoderEdgeVertices)
-        (Decode.field "edges_faces" decodeIds)
+        (decodeIds "edges_faces")
         (Decode.field "edges_assignment" <| Decode.list decoderEdgeType)
-        (Decode.field "edges_foldAngle" <| Decode.list decoderAngle)
+        (Decode.maybeList "edges_foldAngle" decoderAngle)
 
 
 type alias Faces =
@@ -701,5 +740,5 @@ type alias Faces =
 decoderFaces : Decoder Faces
 decoderFaces =
     Decode.map2 Faces
-        (Decode.field "faces_vertices" decodeIds)
-        (Decode.field "faces_edges" decodeIds)
+        (decodeIds "faces_vertices")
+        (decodeIds "faces_edges")
