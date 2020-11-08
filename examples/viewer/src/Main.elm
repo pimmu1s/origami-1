@@ -2,15 +2,19 @@ module Main exposing (..)
 
 import Browser
 import Element exposing (..)
+import Element.Font as Font
 import Element.Input as Input
 import File exposing (File)
 import File.Select as Select
+import Fold.Edge as Edge
 import Fold.File exposing (Class(..))
 import Fold.Frame as Frame exposing (Attribute(..), Class(..))
-import Fold.Types as Types
+import Fold.Types as Types exposing (EdgeType(..))
+import Fold.Vertex as Vertex
 import Html exposing (Html)
 import Json.Decode as Decode
 import Pixels exposing (Pixels)
+import Point2d
 import Task
 
 
@@ -140,7 +144,36 @@ viewFoldFile foldFile =
                 , ( "Classes", mapList Frame.classes frameClassToString frame )
                 , ( "Attributes", mapList Frame.attributes frameAttributeToString frame )
                 , ( "Unit", Types.unitToString <| Frame.unit frame )
+                , ( "Vertices", mapList Frame.vertices vertexToString frame )
+                , ( "Edges", mapList Frame.edges edgeTypeToString frame )
                 ]
+
+        vertexToString vert =
+            Vertex.coordinate vert
+                |> Point2d.unwrap
+                |> (\{ x, y } ->
+                        "(" ++ String.fromFloat x ++ ", " ++ String.fromFloat y ++ ")"
+                   )
+
+        edgeTypeToString edge =
+            Edge.edgeType edge
+                |> (\edgeType ->
+                        case edgeType of
+                            Boundary ->
+                                "Boundary"
+
+                            Mountain ->
+                                "Mountain"
+
+                            Valley ->
+                                "Valley"
+
+                            Flat ->
+                                "Flat"
+
+                            Unassigned ->
+                                "Unassigned"
+                   )
 
         fileClassToString class =
             case class of
@@ -210,8 +243,8 @@ viewFoldFile foldFile =
         mapAttributes =
             List.map
                 (\( name, value ) ->
-                    row [ spacing 6 ]
-                        [ text (name ++ ": ")
+                    paragraph [ spacing 6 ]
+                        [ el [ Font.bold ] <| text (name ++ ": ")
                         , text value
                         ]
                 )

@@ -6,7 +6,7 @@ module Fold.Frame exposing
     , faces
     , author, title, description, classes, attributes, unit
     , setAuthor, setTitle, setDescription, setClasses, setAttributes, setUnit
-    , encode, encodeBody, decoder, decoderBody
+    , encode, encodePartial, decoder
     )
 
 {-|
@@ -52,7 +52,7 @@ module Fold.Frame exposing
 
 # Json
 
-@docs encode, encodeBody, decoder, decoderBody
+@docs encode, encodePartial, decoder
 
 -}
 
@@ -66,6 +66,7 @@ import List.Extra
 import Point2d exposing (Point2d)
 import Quantity
 import Util.Decode as Decode
+import Util.List as List
 
 
 {-| -}
@@ -310,7 +311,13 @@ faces (Frame _ theBody) =
 {-| -}
 encode : Frame units coordinates -> Value
 encode frame =
-    Encode.object <| encodeMetadata frame ++ encodeBody frame
+    Encode.object <| encodePartial frame
+
+
+{-| -}
+encodePartial : Frame units coordinates -> List ( String, Value )
+encodePartial frame =
+    encodeMetadata frame ++ encodeBody frame
 
 
 encodeMetadata : Frame units coordinates -> List ( String, Value )
@@ -549,24 +556,22 @@ decoderMetadata =
                     )
     in
     Decode.map6 Metadata
-        (Decode.field "frame_author" Decode.string)
-        (Decode.field "frame_title" Decode.string)
-        (Decode.field "frame_description" Decode.string)
-        (Decode.field "frame_classes" <| Decode.list decodeClass)
-        (Decode.field "frame_attributes" <| Decode.list decodeAttribute)
-        (Decode.field "frame_unit" decodeUnit)
+        (Decode.maybeString "frame_author")
+        (Decode.maybeString "frame_title")
+        (Decode.maybeString "frame_description")
+        (Decode.maybeList "frame_classes" decodeClass)
+        (Decode.maybeList "frame_attributes" decodeAttribute)
+        (Decode.maybeWithDefault "frame_unit" decodeUnit Unit)
 
 
-{-| Decode the body of the frame. This decoder can be used for decoding every
-frame of the fold object. The reason this partial decoder is exposed is because
-the key frame is stored in the top level object. The body of the key frame needs
-to be decoded separately from the rest of the frames. The metadata associated
-with the key frame is stored in the file object metadata.
--}
 decoderBody : Decoder (Body units coordinates)
 decoderBody =
     let
         decodedVertices verticesRecord =
+            let
+                numVertices =
+                    List.length verticesRecord.vertices
+            in
             List.indexedMap
                 (\index ( point, adjacencies, theFaces ) ->
                     Vertex
@@ -578,8 +583,8 @@ decoderBody =
                 )
                 (List.Extra.zip3
                     verticesRecord.vertices
-                    verticesRecord.adjacency
-                    verticesRecord.faces
+                    (List.fillEmpty verticesRecord.adjacency numVertices)
+                    (List.fillEmpty verticesRecord.faces numVertices)
                 )
 
         decodedEdges edgesRecord =

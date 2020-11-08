@@ -281,32 +281,15 @@ encode (File properties theKeyFrame theOtherFrames) =
         , ( "file_classes", Encode.list encodeClass properties.classes )
         , ( "file_frames", Encode.list Frame.encode theOtherFrames )
         ]
-            ++ Frame.encodeBody theKeyFrame
+            ++ Frame.encodePartial theKeyFrame
 
 
 {-| -}
 decoder : Decoder (File units coordinates)
 decoder =
-    Decode.map3
-        (\theMetadata keyFrameBody frames ->
-            let
-                theKeyFrame =
-                    Frame.with
-                        (Frame.header
-                            { author = theMetadata.author
-                            , title = theMetadata.title
-                            , description = theMetadata.description
-                            , classes = []
-                            , attributes = []
-                            , unit = Unit
-                            }
-                        )
-                        keyFrameBody
-            in
-            File theMetadata theKeyFrame frames
-        )
+    Decode.map3 File
         decoderMetadata
-        Frame.decoderBody
+        Frame.decoder
         (Decode.maybeList "file_frames" Frame.decoder)
 
 
