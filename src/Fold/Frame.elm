@@ -341,14 +341,14 @@ faces (Frame _ theBody) =
 
 
 {-| -}
-faceVertices : Frame units coordinates -> Face -> List (Vertex units coordinates)
-faceVertices (Frame _ theBody) (Face faceProperties) =
+faceVertices : Face -> Frame units coordinates -> List (Vertex units coordinates)
+faceVertices (Face faceProperties) (Frame _ theBody) =
     List.filterMap (\vertex -> Dict.get vertex theBody.vertices) faceProperties.vertices
 
 
 {-| -}
-faceEdges : Frame units coordinates -> Face -> List Edge
-faceEdges (Frame _ theBody) (Face faceProperties) =
+faceEdges : Face -> Frame units coordinates -> List Edge
+faceEdges (Face faceProperties) (Frame _ theBody) =
     List.filterMap (\edge -> Dict.get edge theBody.edges) faceProperties.edges
 
 
@@ -667,6 +667,15 @@ decoderBody =
                 )
 
         decodedFaces facesRecord =
+            let
+                numFaces =
+                    max
+                        (List.length facesRecord.vertices)
+                        (List.length facesRecord.edges)
+
+                fillList =
+                    List.fillEmpty numFaces []
+            in
             List.indexedMap
                 (\index ( theVertices, theEdges ) ->
                     Face
@@ -676,8 +685,8 @@ decoderBody =
                         }
                 )
                 (List.Extra.zip
-                    facesRecord.vertices
-                    facesRecord.edges
+                    (fillList facesRecord.vertices)
+                    (fillList facesRecord.edges)
                 )
 
         toDictionary =

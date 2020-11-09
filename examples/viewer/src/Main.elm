@@ -157,9 +157,9 @@ viewFoldFile foldFile =
                         |> fileColumn
                   )
                 , ( "Faces"
-                  , fileColumn <|
-                        List.map foldAttribute
-                            []
+                  , Frame.faces frame
+                        |> List.map (face frame)
+                        |> fileColumn
                   )
                 ]
 
@@ -171,6 +171,14 @@ viewFoldFile foldFile =
                       )
                     , ( "Edge Vertices"
                       , text <| mapList (Frame.edgeVertices theEdge) vertexToString frame
+                      )
+                    ]
+
+        face frame theFace =
+            fileColumn <|
+                List.map foldAttribute
+                    [ ( "Vertices"
+                      , text <| mapList (Frame.faceVertices theFace) vertexToString frame
                       )
                     ]
 
