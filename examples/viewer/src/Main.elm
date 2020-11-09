@@ -16,6 +16,7 @@ import Json.Decode as Decode
 import Pixels exposing (Pixels)
 import Point2d
 import Task
+import Util.String as String
 
 
 main : Program () Model Msg
@@ -127,53 +128,78 @@ viewFoldFile : Fold.File.File units coordinates -> Element msg
 viewFoldFile foldFile =
     let
         fileAttributes =
-            mapAttributes <|
-                [ ( "Spec", String.fromInt <| Fold.File.spec foldFile )
-                , ( "Creator", Fold.File.creator foldFile )
-                , ( "Author", Fold.File.author foldFile )
-                , ( "Title", Fold.File.title foldFile )
-                , ( "Description", Fold.File.description foldFile )
-                , ( "Attributes", mapList Fold.File.classes fileClassToString foldFile )
+            List.map foldAttribute
+                [ ( "Spec", text <| String.fromInt <| Fold.File.spec foldFile )
+                , ( "Creator", text <| Fold.File.creator foldFile )
+                , ( "Author", text <| Fold.File.author foldFile )
+                , ( "Title", text <| Fold.File.title foldFile )
+                , ( "Description", text <| Fold.File.description foldFile )
+                , ( "Attributes", text <| mapList Fold.File.classes fileClassToString foldFile )
                 ]
 
         frameAttributes frame =
-            mapAttributes <|
-                [ ( "Author", Frame.author frame )
-                , ( "Title", Frame.title frame )
-                , ( "Description", Frame.description frame )
-                , ( "Classes", mapList Frame.classes frameClassToString frame )
-                , ( "Attributes", mapList Frame.attributes frameAttributeToString frame )
-                , ( "Unit", Types.unitToString <| Frame.unit frame )
-                , ( "Vertices", mapList Frame.vertices vertexToString frame )
-                , ( "Edges", mapList Frame.edges edgeTypeToString frame )
+            List.map foldAttribute
+                [ ( "Author", text <| Frame.author frame )
+                , ( "Title", text <| Frame.title frame )
+                , ( "Description", text <| Frame.description frame )
+                , ( "Classes", text <| mapList Frame.classes frameClassToString frame )
+                , ( "Attributes", text <| mapList Frame.attributes frameAttributeToString frame )
+                , ( "Unit", text <| Types.unitToString <| Frame.unit frame )
+                , ( "Vertices"
+                  , fileColumn <|
+                        List.map foldAttribute
+                            [ ( "Coordinates", text <| mapList Frame.vertices vertexToString frame )
+                            ]
+                  )
+                , ( "Edges"
+                  , Frame.edges frame
+                        |> List.map (edge frame)
+                        |> fileColumn
+                  )
+                , ( "Faces"
+                  , fileColumn <|
+                        List.map foldAttribute
+                            []
+                  )
                 ]
+
+        edge frame theEdge =
+            fileColumn <|
+                List.map foldAttribute
+                    [ ( "Edge Type"
+                      , text <| edgeTypeToString <| Edge.edgeType theEdge
+                      )
+                    , ( "Edge Vertices"
+                      , text <| mapList (Frame.edgeVertices theEdge) vertexToString frame
+                      )
+                    ]
 
         vertexToString vert =
             Vertex.coordinate vert
                 |> Point2d.unwrap
                 |> (\{ x, y } ->
-                        "(" ++ String.fromFloat x ++ ", " ++ String.fromFloat y ++ ")"
+                        String.fromFloat x
+                            ++ ", "
+                            ++ String.fromFloat y
+                            |> String.surround "(" ")"
                    )
 
-        edgeTypeToString edge =
-            Edge.edgeType edge
-                |> (\edgeType ->
-                        case edgeType of
-                            Boundary ->
-                                "Boundary"
+        edgeTypeToString edgeType =
+            case edgeType of
+                Boundary ->
+                    "Boundary"
 
-                            Mountain ->
-                                "Mountain"
+                Mountain ->
+                    "Mountain"
 
-                            Valley ->
-                                "Valley"
+                Valley ->
+                    "Valley"
 
-                            Flat ->
-                                "Flat"
+                Flat ->
+                    "Flat"
 
-                            Unassigned ->
-                                "Unassigned"
-                   )
+                Unassigned ->
+                    "Unassigned"
 
         fileClassToString class =
             case class of
@@ -239,15 +265,13 @@ viewFoldFile foldFile =
             accessor file
                 |> List.map toString
                 |> String.join ", "
+                |> String.surround "[" "]"
 
-        mapAttributes =
-            List.map
-                (\( name, value ) ->
-                    paragraph [ spacing 6 ]
-                        [ el [ Font.bold ] <| text (name ++ ": ")
-                        , text value
-                        ]
-                )
+        foldAttribute ( name, element ) =
+            paragraph [ spacing 6 ]
+                [ el [ Font.bold ] <| text (name ++ ": ")
+                , element
+                ]
 
         fileColumn =
             column [ padding 10, spacing 6 ]
@@ -255,6 +279,6 @@ viewFoldFile foldFile =
     fileColumn
         (List.map fileColumn
             ([ fileAttributes ]
-                ++ List.map frameAttributes (Fold.File.allFrames foldFile)
+                ++ List.map frameAttributes (Fold.File.allFrames (Debug.log "Fold File" foldFile))
             )
         )

@@ -1,9 +1,9 @@
 module Fold.Frame exposing
     ( Frame, Class(..), Attribute(..)
     , empty, with, header
-    , vertices
-    , edges
-    , faces
+    , vertices, vertexAdjacencies, vertexFaces
+    , edges, edgeStartVertex, edgeEndVertex, edgeVertices, edgeFaces
+    , faces, faceEdges, faceVertices
     , author, title, description, classes, attributes, unit
     , setAuthor, setTitle, setDescription, setClasses, setAttributes, setUnit
     , encode, encodePartial, decoder
@@ -24,17 +24,17 @@ module Fold.Frame exposing
 
 # Vertices
 
-@docs vertices
+@docs vertices, vertexAdjacencies, vertexFaces
 
 
 # Edges
 
-@docs edges
+@docs edges, edgeStartVertex, edgeEndVertex, edgeVertices, edgeFaces
 
 
 # Faces
 
-@docs faces
+@docs faces, faceEdges, faceVertices
 
 
 # Metadata
@@ -281,6 +281,18 @@ vertices (Frame _ theBody) =
         |> Dict.values
 
 
+{-| -}
+vertexAdjacencies : Frame units coordinates -> Vertex units coordinates -> List (Vertex units coordinates)
+vertexAdjacencies (Frame _ theBody) (Vertex vertexProperties) =
+    List.filterMap (\vertex -> Dict.get vertex theBody.vertices) vertexProperties.adjacency
+
+
+{-| -}
+vertexFaces : Frame units coordinates -> Vertex units coordinates -> List Face
+vertexFaces (Frame _ theBody) (Vertex vertexProperties) =
+    List.filterMap (\face -> Dict.get face theBody.faces) vertexProperties.faces
+
+
 
 -- Edges
 
@@ -292,6 +304,31 @@ edges (Frame _ theBody) =
         |> Dict.values
 
 
+{-| -}
+edgeStartVertex : Edge -> Frame units coordinates -> Maybe (Vertex units coordinates)
+edgeStartVertex (Edge { startVertex }) (Frame _ theBody) =
+    theBody.vertices
+        |> Dict.get startVertex
+
+
+{-| -}
+edgeEndVertex : Edge -> Frame units coordinates -> Maybe (Vertex units coordinates)
+edgeEndVertex (Edge { endVertex }) (Frame _ theBody) =
+    Dict.get endVertex theBody.vertices
+
+
+{-| -}
+edgeVertices : Edge -> Frame units coordinates -> List (Vertex units coordinates)
+edgeVertices edge frame =
+    List.filterMap identity [ edgeStartVertex edge frame, edgeEndVertex edge frame ]
+
+
+{-| -}
+edgeFaces : Frame units coordinates -> Edge -> List Face
+edgeFaces (Frame _ theBody) (Edge edgeProperties) =
+    List.filterMap (\face -> Dict.get face theBody.faces) edgeProperties.faces
+
+
 
 -- Faces
 
@@ -301,6 +338,18 @@ faces : Frame units coordinates -> List Face
 faces (Frame _ theBody) =
     theBody.faces
         |> Dict.values
+
+
+{-| -}
+faceVertices : Frame units coordinates -> Face -> List (Vertex units coordinates)
+faceVertices (Frame _ theBody) (Face faceProperties) =
+    List.filterMap (\vertex -> Dict.get vertex theBody.vertices) faceProperties.vertices
+
+
+{-| -}
+faceEdges : Frame units coordinates -> Face -> List Edge
+faceEdges (Frame _ theBody) (Face faceProperties) =
+    List.filterMap (\edge -> Dict.get edge theBody.edges) faceProperties.edges
 
 
 
@@ -569,8 +618,8 @@ decoderBody =
     let
         decodedVertices verticesRecord =
             let
-                numVertices =
-                    List.length verticesRecord.vertices
+                fillEmpty =
+                    List.fillEmpty (List.length verticesRecord.vertices) []
             in
             List.indexedMap
                 (\index ( point, adjacencies, theFaces ) ->
@@ -583,11 +632,15 @@ decoderBody =
                 )
                 (List.Extra.zip3
                     verticesRecord.vertices
-                    (List.fillEmpty verticesRecord.adjacency numVertices)
-                    (List.fillEmpty verticesRecord.faces numVertices)
+                    (fillEmpty verticesRecord.adjacency)
+                    (fillEmpty verticesRecord.faces)
                 )
 
         decodedEdges edgesRecord =
+            let
+                numEdges =
+                    List.length edgesRecord.vertices
+            in
             List.indexedMap
                 (\index { endpoints, theFaces, edgeType, foldAngle } ->
                     Edge
@@ -608,9 +661,9 @@ decoderBody =
                         }
                     )
                     edgesRecord.vertices
-                    edgesRecord.faces
-                    edgesRecord.assignment
-                    edgesRecord.foldAngle
+                    (List.fillEmpty numEdges [] edgesRecord.faces)
+                    (List.fillEmpty numEdges Mountain edgesRecord.assignment)
+                    (List.fillEmpty numEdges (Angle.radians 0) edgesRecord.foldAngle)
                 )
 
         decodedFaces facesRecord =

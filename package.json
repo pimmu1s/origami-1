@@ -4,10 +4,12 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "start": "run-p dev:docs dec:example-viewer",
     "test": "run-p test:code test:docs",
     "test:code": "npx elm-test",
     "test:docs": "npx elm-doc-preview --output /dev/null",
-    "dev:docs": "npx elm-doc-preview"
+    "dev:docs": "npx elm-doc-preview --port 8080",
+    "dec:example-viewer": "cd examples/viewer; npx elm-live src/Main.elm"
   },
   "author": "Thomas Waters",
   "license": "MIT",
